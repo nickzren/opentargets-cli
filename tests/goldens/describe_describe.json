@@ -1,0 +1,45 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "describe"
+    },
+    "resolved": {
+      "described_command": "describe"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "describe",
+    "summary": "Return the detailed contract for one command",
+    "syntax": "ot describe <command>",
+    "arguments": [
+      {
+        "name": "<command>",
+        "type": "string",
+        "description": "Command name to inspect",
+        "required": true,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      }
+    ],
+    "status_values": [
+      "ok",
+      "not_found",
+      "error"
+    ],
+    "examples": [
+      "ot describe resolve",
+      "ot describe gql"
+    ],
+    "notes": []
+  }
+}

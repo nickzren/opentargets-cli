@@ -1,0 +1,47 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "meta"
+    },
+    "resolved": {
+      "described_command": "meta"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "meta",
+    "summary": "Return API and data release provenance",
+    "syntax": "ot meta [--no-downloads]",
+    "arguments": [
+      {
+        "name": "--no-downloads",
+        "type": "boolean",
+        "description": "Omit the downloads field from data; recorded as request.args.no_downloads for auditability",
+        "required": false,
+        "default": false,
+        "enum": null,
+        "repeatable": false
+      }
+    ],
+    "status_values": [
+      "ok",
+      "error"
+    ],
+    "examples": [
+      "ot meta",
+      "ot meta --no-downloads"
+    ],
+    "notes": [
+      "Returns live Open Targets release metadata.",
+      "Default output preserves raw API values; --no-downloads is an explicit opt-out for the downloads blob."
+    ]
+  }
+}

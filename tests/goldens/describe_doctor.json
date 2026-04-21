@@ -1,0 +1,36 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "doctor"
+    },
+    "resolved": {
+      "described_command": "doctor"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "doctor",
+    "summary": "Diagnose CLI, API, and agent-skill installation health",
+    "syntax": "ot doctor",
+    "arguments": [],
+    "status_values": [
+      "ok",
+      "error"
+    ],
+    "examples": [
+      "ot doctor"
+    ],
+    "notes": [
+      "Reports diagnostics only; it does not install or modify files.",
+      "Missing one global skill is reported as a warning when another supported activation path is available."
+    ]
+  }
+}

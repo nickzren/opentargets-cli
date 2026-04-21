@@ -1,0 +1,75 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "resolve"
+    },
+    "resolved": {
+      "described_command": "resolve"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "resolve",
+    "summary": "Resolve names to canonical Open Targets IDs",
+    "syntax": "ot resolve <term> [--entity <type>] [--limit <n>] [--search-fallback]",
+    "arguments": [
+      {
+        "name": "--entity",
+        "type": "string",
+        "description": "Restrict resolution to one entity type",
+        "required": false,
+        "default": null,
+        "enum": [
+          "target",
+          "disease",
+          "drug",
+          "variant",
+          "study",
+          "credible_set"
+        ],
+        "repeatable": false
+      },
+      {
+        "name": "--limit",
+        "type": "integer",
+        "description": "Maximum number of candidates to return",
+        "required": false,
+        "default": 5,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--search-fallback",
+        "type": "boolean",
+        "description": "Fall back to search when mapIds yields no useful hit",
+        "required": false,
+        "default": true,
+        "enum": null,
+        "repeatable": false
+      }
+    ],
+    "status_values": [
+      "ok",
+      "ambiguous",
+      "not_found",
+      "error"
+    ],
+    "examples": [
+      "ot resolve 'BRCA1' --entity target --limit 5"
+    ],
+    "notes": [
+      "Direct-ID detection is conservative and entity-aware.",
+      "Resolution order is direct-id -> mapIds -> search.",
+      "Deterministic winner rule: top score >= 0.95 and margin >= 0.2.",
+      "Canonical direct-ID patterns: target=^ENSG\\d{11}$, drug=^CHEMBL\\d+$, disease=^(?:EFO|MONDO|Orphanet|OTAR|HP)_[A-Za-z0-9:.+-]+$, variant=^(?:chr)?(?:[1-9]|1\\d|2[0-2]|X|Y|MT|M)_\\d+_[ACGT]+_[ACGT]+$, study=^GCST\\d+$"
+    ]
+  }
+}

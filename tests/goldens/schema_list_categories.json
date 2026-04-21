@@ -1,0 +1,60 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "schema"
+  },
+  "request": {
+    "command": "schema",
+    "args": {
+      "list_categories": true,
+      "category": [],
+      "full": false,
+      "schema_format": "sdl"
+    },
+    "resolved": {}
+  },
+  "warnings": [],
+  "data": {
+    "categories": [
+      {
+        "name": "targets",
+        "summary": "Target entry points and target-related types"
+      },
+      {
+        "name": "diseases",
+        "summary": "Disease entry points and disease-related types"
+      },
+      {
+        "name": "drugs",
+        "summary": "Drug entry points and drug-related types"
+      },
+      {
+        "name": "variants",
+        "summary": "Variant entry points and variant-related types"
+      },
+      {
+        "name": "studies",
+        "summary": "Study entry points and study-related types"
+      },
+      {
+        "name": "credible_sets",
+        "summary": "Credible set entry points and credible-set-related types"
+      },
+      {
+        "name": "associations",
+        "summary": "Association result types and association entry points"
+      },
+      {
+        "name": "evidence",
+        "summary": "Evidence entry points and evidence-related types"
+      },
+      {
+        "name": "meta",
+        "summary": "Metadata and release provenance types"
+      }
+    ]
+  }
+}

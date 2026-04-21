@@ -1,0 +1,86 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "schema"
+    },
+    "resolved": {
+      "described_command": "schema"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "schema",
+    "summary": "Fetch schema categories or list available categories",
+    "syntax": "ot schema [--list-categories] [--category <name> ...] [--full] [--schema-format sdl|json]",
+    "arguments": [
+      {
+        "name": "--list-categories",
+        "type": "boolean",
+        "description": "List the pinned schema categories",
+        "required": false,
+        "default": false,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--category",
+        "type": "string",
+        "description": "Category name to include in the schema slice",
+        "required": false,
+        "default": [],
+        "enum": [
+          "associations",
+          "credible_sets",
+          "diseases",
+          "drugs",
+          "evidence",
+          "meta",
+          "studies",
+          "targets",
+          "variants"
+        ],
+        "repeatable": true
+      },
+      {
+        "name": "--full",
+        "type": "boolean",
+        "description": "Return the full live schema",
+        "required": false,
+        "default": false,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--schema-format",
+        "type": "string",
+        "description": "Schema serialization format",
+        "required": false,
+        "default": "sdl",
+        "enum": [
+          "sdl",
+          "json"
+        ],
+        "repeatable": false
+      }
+    ],
+    "status_values": [
+      "ok",
+      "error"
+    ],
+    "examples": [
+      "ot schema --list-categories",
+      "ot schema --category targets --category associations"
+    ],
+    "notes": [
+      "Category slices are generated from a pinned root-field and seed-type registry."
+    ]
+  }
+}

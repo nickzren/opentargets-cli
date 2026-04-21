@@ -1,0 +1,53 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "install-skills"
+    },
+    "resolved": {
+      "described_command": "install-skills"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "install-skills",
+    "summary": "Install bundled agent skill files for chat-anywhere use",
+    "syntax": "ot install-skills [--agent auto|claude|codex|all]",
+    "arguments": [
+      {
+        "name": "--agent",
+        "type": "string",
+        "description": "Which agent skill target to install; auto installs detected agents, or both when none are detected",
+        "required": false,
+        "default": "auto",
+        "enum": [
+          "auto",
+          "claude",
+          "codex",
+          "all"
+        ],
+        "repeatable": false
+      }
+    ],
+    "status_values": [
+      "ok",
+      "error"
+    ],
+    "examples": [
+      "ot install-skills",
+      "ot install-skills --agent all"
+    ],
+    "notes": [
+      "Uses the skill bundled with the installed package, falling back to the repo skill during editable development.",
+      "Existing skill directories are moved to timestamped backups before replacement.",
+      "This command only modifies Claude/Codex skill directories."
+    ]
+  }
+}

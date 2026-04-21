@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opentargets-cli"
+version = "0.1.0"
+description = "Read-only, model-first CLI for the Open Targets Platform GraphQL API."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  { name = "Nick Ren" }
+]
+dependencies = [
+  "graphql-core>=3.2,<3.3",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8",
+]
+
+[project.scripts]
+ot = "opentargets_cli.cli:main"
+opentargets = "opentargets_cli.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.data-files]
+"share/opentargets-cli/skills/opentargets-cli" = ["skills/opentargets-cli/SKILL.md"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = [
+  "live: tests that hit the real Open Targets GraphQL API (deselect with -m 'not live')",
+  "skill: tests that exercise higher-level skill patterns over the live CLI and OT API",
+]

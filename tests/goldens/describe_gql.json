@@ -1,0 +1,114 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "gql"
+    },
+    "resolved": {
+      "described_command": "gql"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "gql",
+    "summary": "Execute a read-only GraphQL query",
+    "syntax": "ot gql [--query <graphql> | --query-file <path> | stdin] [--variables <json> | --variables-file <path> | --variables-list <ndjson> --key-field <field>] [--operation-name <name>]",
+    "arguments": [
+      {
+        "name": "--query",
+        "type": "string",
+        "description": "Inline GraphQL query document",
+        "required": false,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--query-file",
+        "type": "path",
+        "description": "Path to a GraphQL document file",
+        "required": false,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--variables",
+        "type": "json",
+        "description": "Inline GraphQL variables object",
+        "required": false,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--variables-file",
+        "type": "path",
+        "description": "Path to a JSON file containing GraphQL variables",
+        "required": false,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--variables-list",
+        "type": "path",
+        "description": "Path to an NDJSON file for batch mode; each line must be a variables object",
+        "required": false,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--key-field",
+        "type": "string",
+        "description": "Variable field used as the stable key for each batch row",
+        "required": false,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--max-items",
+        "type": "integer",
+        "description": "Maximum batch rows to execute; batch continues on per-row errors by default",
+        "required": false,
+        "default": 100,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--operation-name",
+        "type": "string",
+        "description": "Optional GraphQL operation name",
+        "required": false,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      }
+    ],
+    "status_values": [
+      "ok",
+      "partial",
+      "error"
+    ],
+    "examples": [
+      "ot gql --query 'query { meta { name } }'",
+      "ot gql --query-file query.graphql --variables-list vars.ndjson --key-field ensemblId"
+    ],
+    "notes": [
+      "Rejects mutation and subscription operations client-side.",
+      "Honors the global --emit-query flag.",
+      "Batch mode uses --variables-list with NDJSON variables and --key-field.",
+      "Batch execution is serial and continues on per-row errors by default.",
+      "GraphQL field selection is the projection mechanism."
+    ]
+  }
+}

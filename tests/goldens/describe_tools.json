@@ -1,0 +1,35 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "tools"
+    },
+    "resolved": {
+      "described_command": "tools"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "tools",
+    "summary": "Return the machine-readable command inventory",
+    "syntax": "ot tools",
+    "arguments": [],
+    "status_values": [
+      "ok",
+      "error"
+    ],
+    "examples": [
+      "ot tools"
+    ],
+    "notes": [
+      "Compact inventory for session-start discovery."
+    ]
+  }
+}

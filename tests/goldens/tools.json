@@ -1,0 +1,105 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "tools"
+  },
+  "request": {
+    "command": "tools",
+    "args": {},
+    "resolved": {}
+  },
+  "warnings": [],
+  "data": {
+    "commands": [
+      {
+        "name": "meta",
+        "summary": "Return API and data release provenance",
+        "status_values": [
+          "ok",
+          "error"
+        ],
+        "describe_command": "ot describe meta"
+      },
+      {
+        "name": "tools",
+        "summary": "Return the machine-readable command inventory",
+        "status_values": [
+          "ok",
+          "error"
+        ],
+        "describe_command": "ot describe tools"
+      },
+      {
+        "name": "doctor",
+        "summary": "Diagnose CLI, API, and agent-skill installation health",
+        "status_values": [
+          "ok",
+          "error"
+        ],
+        "describe_command": "ot describe doctor"
+      },
+      {
+        "name": "install-skills",
+        "summary": "Install bundled agent skill files for chat-anywhere use",
+        "status_values": [
+          "ok",
+          "error"
+        ],
+        "describe_command": "ot describe install-skills"
+      },
+      {
+        "name": "describe",
+        "summary": "Return the detailed contract for one command",
+        "status_values": [
+          "ok",
+          "not_found",
+          "error"
+        ],
+        "describe_command": "ot describe describe"
+      },
+      {
+        "name": "resolve",
+        "summary": "Resolve names to canonical Open Targets IDs",
+        "status_values": [
+          "ok",
+          "ambiguous",
+          "not_found",
+          "error"
+        ],
+        "describe_command": "ot describe resolve"
+      },
+      {
+        "name": "schema",
+        "summary": "Fetch schema categories or list available categories",
+        "status_values": [
+          "ok",
+          "error"
+        ],
+        "describe_command": "ot describe schema"
+      },
+      {
+        "name": "type",
+        "summary": "Inspect one GraphQL type, optionally with dependencies",
+        "status_values": [
+          "ok",
+          "not_found",
+          "error"
+        ],
+        "describe_command": "ot describe type"
+      },
+      {
+        "name": "gql",
+        "summary": "Execute a read-only GraphQL query",
+        "status_values": [
+          "ok",
+          "partial",
+          "error"
+        ],
+        "describe_command": "ot describe gql"
+      }
+    ]
+  }
+}

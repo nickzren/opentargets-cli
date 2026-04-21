@@ -1,0 +1,66 @@
+{
+  "status": "ok",
+  "meta": {
+    "tool": "ot",
+    "endpoint": "https://api.platform.opentargets.org/api/v4/graphql",
+    "queried_at_utc": "2000-01-01T00:00:00Z",
+    "template": "describe"
+  },
+  "request": {
+    "command": "describe",
+    "args": {
+      "command": "type"
+    },
+    "resolved": {
+      "described_command": "type"
+    }
+  },
+  "warnings": [],
+  "data": {
+    "command": "type",
+    "summary": "Inspect one GraphQL type, optionally with dependencies",
+    "syntax": "ot type <graphql_type> [--with-dependencies] [--schema-format sdl|json]",
+    "arguments": [
+      {
+        "name": "<graphql_type>",
+        "type": "string",
+        "description": "GraphQL type name to inspect",
+        "required": true,
+        "default": null,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--with-dependencies",
+        "type": "boolean",
+        "description": "Include the recursive dependency closure of the requested type",
+        "required": false,
+        "default": false,
+        "enum": null,
+        "repeatable": false
+      },
+      {
+        "name": "--schema-format",
+        "type": "string",
+        "description": "Schema serialization format",
+        "required": false,
+        "default": "sdl",
+        "enum": [
+          "sdl",
+          "json"
+        ],
+        "repeatable": false
+      }
+    ],
+    "status_values": [
+      "ok",
+      "not_found",
+      "error"
+    ],
+    "examples": [
+      "ot type Target",
+      "ot type AssociatedDisease --with-dependencies"
+    ],
+    "notes": []
+  }
+}
