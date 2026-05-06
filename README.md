@@ -27,6 +27,27 @@ flowchart LR
 
 Prerequisite: install [`uv`](https://docs.astral.sh/uv/).
 
+## Install Agent Skill
+
+Copy this into a new Codex or Claude Code session:
+
+```text
+Set up opentargets-cli, the Open Targets CLI and skill for agents.
+
+If uv is available:
+uv tool install git+https://github.com/nickzren/opentargets-cli.git && ot install-skills
+
+If npm is available and `ot` is already installed:
+npx skills add nickzren/opentargets-cli --skill opentargets-cli -y -g
+
+Otherwise:
+dir="${XDG_DATA_HOME:-$HOME/.local/share}/agent-skills"
+repo="$dir/opentargets-cli"
+mkdir -p "$dir"
+test -d "$repo" || gh repo clone nickzren/opentargets-cli "$repo"
+"$repo/install.sh"
+```
+
 ### From package
 
 ```sh
