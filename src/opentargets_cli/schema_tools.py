@@ -135,13 +135,25 @@ def serialize_type(schema: GraphQLSchema, type_name: str) -> dict[str, Any] | No
             {"name": name, "type": format_type_ref(field.type)} for name, field in graphql_type.fields.items()
         ]
     elif isinstance(graphql_type, GraphQLEnumType):
-        payload["enum_values"] = [value_name for value_name in graphql_type.values]
+        payload["enum_values"] = list(graphql_type.values)
     elif isinstance(graphql_type, GraphQLUnionType):
         payload["possible_types"] = [possible.name for possible in graphql_type.types]
     elif isinstance(graphql_type, GraphQLScalarType):
         payload["scalar"] = graphql_type.name
     payload["definition"] = print_type(graphql_type)
     return payload
+
+
+def serialize_types(schema: GraphQLSchema, type_names: set[str] | list[str]) -> list[dict[str, Any]]:
+    payloads = [serialize_type(schema, type_name) for type_name in sorted(type_names)]
+    return [payload for payload in payloads if payload is not None]
+
+
+def serialize_query_fields(schema: GraphQLSchema, field_names: set[str]) -> list[dict[str, Any]]:
+    query_type = schema.query_type
+    if query_type is None:
+        return []
+    return [serialize_field(name, field) for name, field in query_type.fields.items() if name in field_names]
 
 
 def build_category_slice(schema: GraphQLSchema, categories: list[str], schema_format: str) -> dict[str, Any]:
@@ -160,19 +172,12 @@ def build_category_slice(schema: GraphQLSchema, categories: list[str], schema_fo
             "schema_text": render_sdl(schema, reachable_types, query_fields=root_fields),
             "notes": ["Focused schema subset for the requested categories"],
         }
-    query_type = schema.query_type
-    query_fields_payload = []
-    if query_type is not None:
-        query_fields_payload = [
-            serialize_field(name, field) for name, field in query_type.fields.items() if name in root_fields
-        ]
-    types_payload = [serialize_type(schema, name) for name in sorted(reachable_types)]
     return {
         "schema_format": "json",
         "requested_categories": categories,
         "schema_json": {
-            "query_fields": query_fields_payload,
-            "types": [payload for payload in types_payload if payload is not None],
+            "query_fields": serialize_query_fields(schema, root_fields),
+            "types": serialize_types(schema, reachable_types),
         },
         "notes": ["Focused schema subset for the requested categories"],
     }
@@ -187,7 +192,7 @@ def build_full_schema(schema: GraphQLSchema, schema_format: str) -> dict[str, An
     return {
         "schema_format": "json",
         "requested_categories": [],
-        "schema_json": {"types": [payload for payload in (serialize_type(schema, name) for name in type_names) if payload]},
+        "schema_json": {"types": serialize_types(schema, type_names)},
         "notes": ["Full live schema"],
     }
 
@@ -203,12 +208,11 @@ def build_type_view(schema: GraphQLSchema, requested_type: str, with_dependencie
             "schema_format": "sdl",
             "schema_text": render_sdl(schema, selected_types),
         }
-    payloads = [serialize_type(schema, type_name) for type_name in sorted(selected_types)]
     return {
         "requested_type": requested_type,
         "with_dependencies": with_dependencies,
         "schema_format": "json",
-        "schema_json": {"types": [payload for payload in payloads if payload is not None]},
+        "schema_json": {"types": serialize_types(schema, selected_types)},
     }
 
 

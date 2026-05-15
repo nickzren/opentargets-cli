@@ -6,6 +6,7 @@ import os
 import shutil
 import sys
 import sysconfig
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,6 @@ from opentargets_cli.config import (
     AMBIGUITY_MARGIN,
     AMBIGUITY_THRESHOLD,
     CATEGORY_SPECS,
-    CANONICAL_ID_RULES,
     DISEASE_ID_PATTERN,
     DRUG_ID_PATTERN,
     ENTITY_TYPES,
@@ -69,9 +69,16 @@ query ResolveSearch($queryString: String!, $entityNames: [String!], $page: Pagin
 
 TRANSPORT_ERROR_CODES = {"network", "timeout", "malformed_response"}
 
-DIRECT_ID_QUERIES: dict[str, tuple[str, str, str]] = {
-    "target": (
-        """
+@dataclass(frozen=True)
+class DirectIdQuery:
+    query: str
+    field_name: str
+    id_key: str
+
+
+DIRECT_ID_QUERIES: dict[str, DirectIdQuery] = {
+    "target": DirectIdQuery(
+        query="""
         query ValidateTarget($id: String!) {
           target(ensemblId: $id) {
             id
@@ -80,11 +87,11 @@ DIRECT_ID_QUERIES: dict[str, tuple[str, str, str]] = {
           }
         }
         """.strip(),
-        "target",
-        "id",
+        field_name="target",
+        id_key="id",
     ),
-    "disease": (
-        """
+    "disease": DirectIdQuery(
+        query="""
         query ValidateDisease($id: String!) {
           disease(efoId: $id) {
             id
@@ -93,11 +100,11 @@ DIRECT_ID_QUERIES: dict[str, tuple[str, str, str]] = {
           }
         }
         """.strip(),
-        "disease",
-        "id",
+        field_name="disease",
+        id_key="id",
     ),
-    "drug": (
-        """
+    "drug": DirectIdQuery(
+        query="""
         query ValidateDrug($id: String!) {
           drug(chemblId: $id) {
             id
@@ -106,11 +113,11 @@ DIRECT_ID_QUERIES: dict[str, tuple[str, str, str]] = {
           }
         }
         """.strip(),
-        "drug",
-        "id",
+        field_name="drug",
+        id_key="id",
     ),
-    "variant": (
-        """
+    "variant": DirectIdQuery(
+        query="""
         query ValidateVariant($id: String!) {
           variant(variantId: $id) {
             id
@@ -119,11 +126,11 @@ DIRECT_ID_QUERIES: dict[str, tuple[str, str, str]] = {
           }
         }
         """.strip(),
-        "variant",
-        "id",
+        field_name="variant",
+        id_key="id",
     ),
-    "study": (
-        """
+    "study": DirectIdQuery(
+        query="""
         query ValidateStudy($id: String!) {
           study(studyId: $id) {
             studyId
@@ -131,10 +138,18 @@ DIRECT_ID_QUERIES: dict[str, tuple[str, str, str]] = {
           }
         }
         """.strip(),
-        "study",
-        "studyId",
+        field_name="study",
+        id_key="studyId",
     ),
 }
+
+DIRECT_ID_PATTERNS = (
+    ("target", TARGET_ID_PATTERN),
+    ("drug", DRUG_ID_PATTERN),
+    ("variant", VARIANT_ID_PATTERN),
+    ("study", STUDY_ID_PATTERN),
+    ("disease", DISEASE_ID_PATTERN),
+)
 
 
 def utc_now() -> str:
@@ -157,19 +172,67 @@ def data_version_string(parts: dict[str, Any]) -> str:
     return f"{base}.{iteration}" if iteration else base
 
 
-def build_meta_block(client: OpenTargetsClient, template: str) -> dict[str, Any]:
-    meta = client.fetch_meta()
-    api_version_parts = meta["apiVersion"]
-    data_version_parts = meta["dataVersion"]
+def version_pair(meta: dict[str, Any]) -> dict[str, str]:
+    return {
+        "api_version": version_string(meta["apiVersion"]),
+        "data_version": data_version_string(meta["dataVersion"]),
+    }
+
+
+def static_meta_block(endpoint: str, template: str) -> dict[str, Any]:
     return {
         "tool": "ot",
-        "endpoint": client.endpoint,
-        "api_version": version_string(api_version_parts),
-        "data_version": data_version_string(data_version_parts),
-        "product": meta["product"],
+        "endpoint": endpoint,
         "queried_at_utc": utc_now(),
         "template": template,
     }
+
+
+def build_meta_block(client: OpenTargetsClient, template: str) -> dict[str, Any]:
+    meta = client.fetch_meta()
+    static = static_meta_block(client.endpoint, template)
+    versions = version_pair(meta)
+    return {
+        "tool": static["tool"],
+        "endpoint": static["endpoint"],
+        "api_version": versions["api_version"],
+        "data_version": versions["data_version"],
+        "product": meta["product"],
+        "queried_at_utc": static["queried_at_utc"],
+        "template": static["template"],
+    }
+
+
+def build_envelope(
+    *,
+    status: str,
+    meta: dict[str, Any],
+    command: str,
+    args: dict[str, Any],
+    resolved: dict[str, Any] | None = None,
+    warnings: list[Any] | None = None,
+    data: dict[str, Any] | None = None,
+    error: CLIError | None = None,
+) -> dict[str, Any]:
+    envelope = {
+        "status": status,
+        "meta": meta,
+        "request": {
+            "command": command,
+            "args": args,
+            "resolved": resolved or {},
+        },
+        "warnings": warnings or [],
+    }
+    if error is not None:
+        envelope["error"] = {
+            "code": error.code,
+            "message": error.message,
+            "details": error.details,
+        }
+    else:
+        envelope["data"] = data or {}
+    return envelope
 
 
 def build_success_envelope(
@@ -183,17 +246,15 @@ def build_success_envelope(
     warnings: list[Any] | None = None,
     data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "status": status,
-        "meta": build_meta_block(client, template),
-        "request": {
-            "command": command,
-            "args": args,
-            "resolved": resolved or {},
-        },
-        "warnings": warnings or [],
-        "data": data or {},
-    }
+    return build_envelope(
+        status=status,
+        meta=build_meta_block(client, template),
+        command=command,
+        args=args,
+        resolved=resolved,
+        warnings=warnings,
+        data=data,
+    )
 
 
 def build_error_envelope(
@@ -205,26 +266,15 @@ def build_error_envelope(
     resolved: dict[str, Any] | None,
     error: CLIError,
 ) -> dict[str, Any]:
-    return {
-        "status": "error",
-        "meta": {
-            "tool": "ot",
-            "endpoint": endpoint,
-            "queried_at_utc": utc_now(),
-            "template": template,
-        },
-        "request": {
-            "command": command,
-            "args": args,
-            "resolved": resolved or {},
-        },
-        "warnings": [],
-        "error": {
-            "code": error.code,
-            "message": error.message,
-            "details": error.details,
-        },
-    }
+    return build_envelope(
+        status="error",
+        meta=static_meta_block(endpoint, template),
+        command=command,
+        args=args,
+        resolved=resolved,
+        warnings=[],
+        error=error,
+    )
 
 
 def build_local_success_envelope(
@@ -238,22 +288,23 @@ def build_local_success_envelope(
     warnings: list[Any] | None = None,
     data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "status": status,
-        "meta": {
-            "tool": "ot",
-            "endpoint": endpoint,
-            "queried_at_utc": utc_now(),
-            "template": template,
-        },
-        "request": {
-            "command": command,
-            "args": args,
-            "resolved": resolved or {},
-        },
-        "warnings": warnings or [],
-        "data": data or {},
-    }
+    return build_envelope(
+        status=status,
+        meta=static_meta_block(endpoint, template),
+        command=command,
+        args=args,
+        resolved=resolved,
+        warnings=warnings,
+        data=data,
+    )
+
+
+def gql_query_source(args: argparse.Namespace, *, stdin_label: str | None) -> str | None:
+    if getattr(args, "query", None):
+        return "inline"
+    if getattr(args, "query_file", None):
+        return "file"
+    return stdin_label
 
 
 def error_args_from_namespace(args: argparse.Namespace) -> dict[str, Any]:
@@ -295,11 +346,7 @@ def error_args_from_namespace(args: argparse.Namespace) -> dict[str, Any]:
     if command == "gql":
         return compact_dict(
             {
-                "query_source": "inline"
-                if getattr(args, "query", None)
-                else "file"
-                if getattr(args, "query_file", None)
-                else None,
+                "query_source": gql_query_source(args, stdin_label=None),
                 "variables_source": "inline"
                 if getattr(args, "variables", None)
                 else "file"
@@ -379,27 +426,35 @@ def normalize_entity(entity: str) -> str:
     return "credibleSet" if entity == "credible_set" else entity
 
 
+def parse_json_object(text: str, *, invalid_message: str, object_message: str) -> dict[str, Any]:
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise CLIError("usage", invalid_message, exit_code=2) from exc
+    if not isinstance(parsed, dict):
+        raise CLIError("usage", object_message, exit_code=2)
+    return parsed
+
+
 def read_json_arg(raw: str | None, path: str | None) -> dict[str, Any] | None:
     if raw and path:
         raise CLIError("usage", "Choose either --variables or --variables-file, not both.", exit_code=2)
     if raw:
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise CLIError("usage", "Invalid JSON passed to --variables.", exit_code=2) from exc
-        if not isinstance(parsed, dict):
-            raise CLIError("usage", "--variables must decode to a JSON object.", exit_code=2)
-        return parsed
+        return parse_json_object(
+            raw,
+            invalid_message="Invalid JSON passed to --variables.",
+            object_message="--variables must decode to a JSON object.",
+        )
     if path:
         try:
-            parsed = json.loads(Path(path).read_text(encoding="utf-8"))
+            text = Path(path).read_text(encoding="utf-8")
         except FileNotFoundError as exc:
             raise CLIError("usage", f"Variables file not found: {path}", exit_code=2) from exc
-        except json.JSONDecodeError as exc:
-            raise CLIError("usage", f"Variables file is not valid JSON: {path}", exit_code=2) from exc
-        if not isinstance(parsed, dict):
-            raise CLIError("usage", "--variables-file must contain a JSON object.", exit_code=2)
-        return parsed
+        return parse_json_object(
+            text,
+            invalid_message=f"Variables file is not valid JSON: {path}",
+            object_message="--variables-file must contain a JSON object.",
+        )
     return None
 
 
@@ -482,21 +537,9 @@ def validate_query_is_read_only(query_text: str) -> None:
 
 
 def infer_direct_entity(term: str, entity_filter: str | None) -> str | None:
-    if entity_filter == "target" or (entity_filter is None and TARGET_ID_PATTERN.match(term)):
-        if TARGET_ID_PATTERN.match(term):
-            return "target"
-    if entity_filter == "drug" or (entity_filter is None and DRUG_ID_PATTERN.match(term)):
-        if DRUG_ID_PATTERN.match(term):
-            return "drug"
-    if entity_filter == "variant" or (entity_filter is None and VARIANT_ID_PATTERN.match(term)):
-        if VARIANT_ID_PATTERN.match(term):
-            return "variant"
-    if entity_filter == "study" or (entity_filter is None and STUDY_ID_PATTERN.match(term)):
-        if STUDY_ID_PATTERN.match(term):
-            return "study"
-    if entity_filter == "disease" or entity_filter is None:
-        if DISEASE_ID_PATTERN.match(term):
-            return "disease"
+    for entity, pattern in DIRECT_ID_PATTERNS:
+        if entity_filter in (None, entity) and pattern.match(term):
+            return entity
     return None
 
 
@@ -558,9 +601,9 @@ def choose_resolution_status(candidates: list[dict[str, Any]], entity_filter: st
 
 
 def resolve_direct_id(client: OpenTargetsClient, entity: str, term: str) -> list[dict[str, Any]]:
-    query, field_name, _ = DIRECT_ID_QUERIES[entity]
-    response = client.execute(query, variables={"id": term})
-    record = response.get("data", {}).get(field_name)
+    spec = DIRECT_ID_QUERIES[entity]
+    response = client.execute(spec.query, variables={"id": term})
+    record = response.get("data", {}).get(spec.field_name)
     if not isinstance(record, dict):
         return []
     return [candidate_from_direct_hit(entity, record)]
@@ -575,8 +618,7 @@ def resolve_map_ids(client: OpenTargetsClient, term: str, entity_filter: str | N
     if not mappings:
         return []
     hits = mappings[0].get("hits", [])
-    normalized = [normalize_hit(hit, 1.0) for hit in hits]
-    return normalized
+    return [normalize_hit(hit, 1.0) for hit in hits]
 
 
 def resolve_search(client: OpenTargetsClient, term: str, entity_filter: str | None, limit: int) -> list[dict[str, Any]]:
@@ -604,14 +646,15 @@ def handle_meta(client: OpenTargetsClient, args: argparse.Namespace) -> dict[str
     meta = client.fetch_meta()
     api_version_parts = meta["apiVersion"]
     data_version_parts = meta["dataVersion"]
+    versions = version_pair(meta)
     data: dict[str, Any] = {
         "name": meta["name"],
         "product": meta["product"],
         "data_prefix": meta["dataPrefix"],
         "enable_data_release_prefix": meta["enableDataReleasePrefix"],
-        "api_version": version_string(api_version_parts),
+        "api_version": versions["api_version"],
         "api_version_parts": api_version_parts,
-        "data_version": data_version_string(data_version_parts),
+        "data_version": versions["data_version"],
         "data_version_parts": data_version_parts,
     }
     if not args.no_downloads:
@@ -807,58 +850,41 @@ def repo_local_check(cwd: Path) -> dict[str, Any]:
 
 
 def doctor_meta(endpoint: str, meta: dict[str, Any] | None) -> dict[str, Any]:
-    base: dict[str, Any] = {
-        "tool": "ot",
-        "endpoint": endpoint,
-        "queried_at_utc": utc_now(),
-        "template": "doctor",
-    }
+    base = static_meta_block(endpoint, "doctor")
     if meta is not None:
-        api_version_parts = meta["apiVersion"]
-        data_version_parts = meta["dataVersion"]
-        base.update(
-            {
-                "api_version": version_string(api_version_parts),
-                "data_version": data_version_string(data_version_parts),
-                "product": meta["product"],
-            }
-        )
+        base.update(version_pair(meta))
+        base["product"] = meta["product"]
     return base
 
 
-def handle_doctor(client: OpenTargetsClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
-    cwd = Path.cwd()
-    codex_home = Path(os.getenv("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
-    claude_skill = skill_check(Path.home() / ".claude" / "skills" / "opentargets-cli")
-    codex_skill = skill_check(codex_home / "skills" / "opentargets-cli")
-    repo_local = repo_local_check(cwd)
-    ot_path = shutil.which("ot")
-    claude_command = shutil.which("claude")
-    codex_command = shutil.which("codex")
-    detected_agents = {
-        "claude": bool(claude_command),
-        "codex": bool(codex_command),
-    }
-
-    api: dict[str, Any]
-    api_meta: dict[str, Any] | None = None
+def api_reachability(client: OpenTargetsClient) -> tuple[dict[str, Any], dict[str, Any] | None]:
     try:
         api_meta = client.fetch_meta()
-        api = {
-            "reachable": True,
-            "api_version": version_string(api_meta["apiVersion"]),
-            "data_version": data_version_string(api_meta["dataVersion"]),
-        }
     except CLIError as error:
-        api = {
-            "reachable": False,
-            "error": {
-                "code": error.code,
-                "message": error.message,
-                "details": error.details,
+        return (
+            {
+                "reachable": False,
+                "error": {
+                    "code": error.code,
+                    "message": error.message,
+                    "details": error.details,
+                },
             },
-        }
+            None,
+        )
+    versions = version_pair(api_meta)
+    return {"reachable": True, **versions}, api_meta
 
+
+def doctor_warnings_and_failures(
+    *,
+    ot_path: str | None,
+    api: dict[str, Any],
+    repo_local: dict[str, Any],
+    detected_agents: dict[str, bool],
+    claude_skill: dict[str, Any],
+    codex_skill: dict[str, Any],
+) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
     failures: list[str] = []
 
@@ -882,6 +908,33 @@ def handle_doctor(client: OpenTargetsClient, args: argparse.Namespace) -> tuple[
     for name, check in (("claude_skill", claude_skill), ("codex_skill", codex_skill)):
         if check["installed"] and check["version_matches"] is not True:
             failures.append(f"{name} version does not match CLI version")
+
+    return warnings, failures
+
+
+def handle_doctor(client: OpenTargetsClient, args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    cwd = Path.cwd()
+    codex_home = Path(os.getenv("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+    claude_skill = skill_check(Path.home() / ".claude" / "skills" / "opentargets-cli")
+    codex_skill = skill_check(codex_home / "skills" / "opentargets-cli")
+    repo_local = repo_local_check(cwd)
+    ot_path = shutil.which("ot")
+    claude_command = shutil.which("claude")
+    codex_command = shutil.which("codex")
+    detected_agents = {
+        "claude": bool(claude_command),
+        "codex": bool(codex_command),
+    }
+
+    api, api_meta = api_reachability(client)
+    warnings, failures = doctor_warnings_and_failures(
+        ot_path=ot_path,
+        api=api,
+        repo_local=repo_local,
+        detected_agents=detected_agents,
+        claude_skill=claude_skill,
+        codex_skill=codex_skill,
+    )
 
     status = "error" if failures else "ok"
     data = {
@@ -1029,17 +1082,18 @@ def handle_schema(client: OpenTargetsClient, args: argparse.Namespace) -> dict[s
 
 def handle_type(client: OpenTargetsClient, args: argparse.Namespace) -> dict[str, Any]:
     schema = client.fetch_schema()
+    args_payload = {
+        "graphql_type": args.graphql_type,
+        "with_dependencies": args.with_dependencies,
+        "schema_format": args.schema_format,
+    }
     if schema.get_type(args.graphql_type) is None:
         suggestions = suggest_types(schema, args.graphql_type)
         return build_success_envelope(
             client=client,
             command="type",
             template="type",
-            args={
-                "graphql_type": args.graphql_type,
-                "with_dependencies": args.with_dependencies,
-                "schema_format": args.schema_format,
-            },
+            args=args_payload,
             status="not_found",
             warnings=[{"suggestions": suggestions}] if suggestions else [],
             data={"requested_type": args.graphql_type},
@@ -1048,11 +1102,7 @@ def handle_type(client: OpenTargetsClient, args: argparse.Namespace) -> dict[str
         client=client,
         command="type",
         template="type",
-        args={
-            "graphql_type": args.graphql_type,
-            "with_dependencies": args.with_dependencies,
-            "schema_format": args.schema_format,
-        },
+        args=args_payload,
         data=build_type_view(schema, args.graphql_type, args.with_dependencies, args.schema_format),
     )
 
@@ -1105,6 +1155,48 @@ def row_error(index: int, variables: dict[str, Any], code: str, message: str, de
     }
 
 
+def execute_gql_batch_row(
+    client: OpenTargetsClient,
+    args: argparse.Namespace,
+    query_text: str,
+    index: int,
+    variables: dict[str, Any],
+) -> dict[str, Any]:
+    if args.key_field not in variables:
+        return row_error(
+            index,
+            variables,
+            "usage",
+            f"Key field '{args.key_field}' not found in variables.",
+            {"key_field": args.key_field},
+        )
+
+    key = str(variables[args.key_field])
+    try:
+        response = client.execute(query_text, variables=variables, operation_name=args.operation_name)
+        status, warnings, data, error = classify_gql_response(response)
+        if error:
+            if error.code in TRANSPORT_ERROR_CODES:
+                raise error
+            result = row_error(index, variables, error.code, error.message, error.details)
+            result["key"] = key
+            return result
+        return {
+            "index": index,
+            "key": key,
+            "variables": variables,
+            "status": status,
+            "graphql_data": data,
+            "warnings": warnings,
+        }
+    except CLIError as error:
+        if error.code in TRANSPORT_ERROR_CODES:
+            raise
+        result = row_error(index, variables, error.code, error.message, error.details)
+        result["key"] = key
+        return result
+
+
 def handle_gql_batch(
     client: OpenTargetsClient,
     args: argparse.Namespace,
@@ -1121,48 +1213,9 @@ def handle_gql_batch(
     counts = {"ok": 0, "partial": 0, "error": 0}
 
     for index, variables in enumerate(variables_list):
-        if args.key_field not in variables:
-            result = row_error(
-                index,
-                variables,
-                "usage",
-                f"Key field '{args.key_field}' not found in variables.",
-                {"key_field": args.key_field},
-            )
-            results.append(result)
-            counts["error"] += 1
-            continue
-
-        key = str(variables[args.key_field])
-        try:
-            response = client.execute(query_text, variables=variables, operation_name=args.operation_name)
-            status, warnings, data, error = classify_gql_response(response)
-            if error:
-                if error.code in TRANSPORT_ERROR_CODES:
-                    raise error
-                result = row_error(index, variables, error.code, error.message, error.details)
-                result["key"] = key
-                results.append(result)
-                counts["error"] += 1
-                continue
-            results.append(
-                {
-                    "index": index,
-                    "key": key,
-                    "variables": variables,
-                    "status": status,
-                    "graphql_data": data,
-                    "warnings": warnings,
-                }
-            )
-            counts[status] += 1
-        except CLIError as error:
-            if error.code in TRANSPORT_ERROR_CODES:
-                raise
-            result = row_error(index, variables, error.code, error.message, error.details)
-            result["key"] = key
-            results.append(result)
-            counts["error"] += 1
+        result = execute_gql_batch_row(client, args, query_text, index, variables)
+        results.append(result)
+        counts[result["status"]] += 1
 
     if counts["ok"] == len(results):
         status = "ok"
@@ -1185,7 +1238,7 @@ def handle_gql_batch(
         template="gql.batch",
         args=compact_dict(
             {
-                "query_source": "inline" if args.query else "file" if args.query_file else "stdin",
+                "query_source": gql_query_source(args, stdin_label="stdin"),
                 "variables_source": "list",
                 "variables_list": args.variables_list,
                 "key_field": args.key_field,
@@ -1238,7 +1291,6 @@ def handle_gql(client: OpenTargetsClient, args: argparse.Namespace, emit_query: 
         "variables": variables or {},
         "graphql_data": data,
     }
-    exit_code = 0
 
     envelope = build_success_envelope(
         client=client,
@@ -1246,7 +1298,7 @@ def handle_gql(client: OpenTargetsClient, args: argparse.Namespace, emit_query: 
         template="gql",
         args=compact_dict(
             {
-                "query_source": "inline" if args.query else "file" if args.query_file else "stdin",
+                "query_source": gql_query_source(args, stdin_label="stdin"),
                 "variables_source": "inline" if args.variables else "file" if args.variables_file else None,
                 "operation_name": args.operation_name,
             }
@@ -1256,7 +1308,7 @@ def handle_gql(client: OpenTargetsClient, args: argparse.Namespace, emit_query: 
         warnings=warnings,
         data=payload,
     )
-    return envelope, exit_code
+    return envelope, 0
 
 
 def build_parser() -> argparse.ArgumentParser:
