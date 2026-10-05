@@ -82,7 +82,7 @@ For chat-anywhere use, run:
 ot install-skills
 ```
 
-`ot install-skills` installs detected agent skill(s). If a skill already exists, it is moved to a timestamped backup before installing the new copy. Use `ot install-skills --agent all` to install both Claude Code and Codex skills explicitly.
+`ot install-skills` installs detected agent skill(s). If a skill already exists, it is moved to a timestamped backup in `skill-backups/` beside the agent's `skills/` directory, outside skill discovery, before installing the new copy. Use `ot install-skills --agent all` to install both Claude Code and Codex skills explicitly.
 
 Restart the agent session after installing or updating the skill.
 

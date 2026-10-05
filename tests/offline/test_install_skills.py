@@ -38,7 +38,9 @@ def test_install_skills_all_installs_both_and_backs_up_existing(tmp_path, monkey
     assert installed["codex"]["version"] == __version__
     assert (existing / "SKILL.md").read_text(encoding="utf-8").startswith("---\nname: opentargets-cli")
     backup_path = Path(installed["claude"]["backup_path"])
+    assert backup_path.parent == home / ".claude" / "skill-backups"
     assert (backup_path / "SKILL.md").read_text(encoding="utf-8") == "user-edited skill\n"
+    assert [p.name for p in (home / ".claude" / "skills").iterdir()] == ["opentargets-cli"]
     assert (codex_home / "skills" / "opentargets-cli" / "SKILL.md").is_file()
 
 

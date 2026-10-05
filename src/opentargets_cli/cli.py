@@ -763,13 +763,15 @@ def ensure_safe_skill_destination(agent: str, dest: Path) -> None:
 
 
 def next_backup_path(dest: Path) -> Path:
+    # Keep backups beside the skills directory so agents do not discover them as skills.
+    backup_dir = dest.parent.parent / "skill-backups"
     stamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
-    backup = dest.with_name(f"{dest.name}.backup-{stamp}")
+    backup = backup_dir / f"{dest.name}.backup-{stamp}"
     if not backup.exists() and not backup.is_symlink():
         return backup
     suffix = 1
     while True:
-        candidate = dest.with_name(f"{dest.name}.backup-{stamp}.{suffix}")
+        candidate = backup_dir / f"{dest.name}.backup-{stamp}.{suffix}"
         if not candidate.exists() and not candidate.is_symlink():
             return candidate
         suffix += 1
@@ -780,6 +782,7 @@ def copy_skill_tree(source: Path, dest: Path) -> Path | None:
     backup: Path | None = None
     if dest.exists() or dest.is_symlink():
         backup = next_backup_path(dest)
+        backup.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(dest), str(backup))
     shutil.copytree(source, dest)
     return backup

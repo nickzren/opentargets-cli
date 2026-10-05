@@ -1,7 +1,7 @@
 ---
 name: opentargets-cli
 version: 0.1.0
-description: Use this skill for read-only Open Targets Platform questions when a local `ot` CLI is available. This skill assumes a model-first CLI that exposes self-describing commands: `ot doctor`, `ot install-skills`, `ot tools`, `ot describe`, `ot meta`, `ot resolve`, `ot schema`, `ot type`, and `ot gql`. Use it for command discovery, ID resolution, schema inspection, and executing custom Open Targets GraphQL. Do not use this skill for write operations or non-Open-Targets tasks.
+description: Use for read-only Open Targets Platform questions when the local `ot` CLI is available - ID resolution, schema inspection, and custom GraphQL queries. Not for write operations or non-Open-Targets tasks.
 ---
 
 # Open Targets CLI skill
@@ -10,59 +10,21 @@ This skill assumes a local `ot` command is available on `PATH`.
 
 ## Core rule
 
-Use the CLI first. Do not start with raw `curl` or direct HTTP unless the user explicitly asks for a different workflow or the CLI is unavailable.
+Use the CLI first. Do not start with raw `curl` or direct HTTP, or switch to a different data-access workflow, unless the user explicitly asks or the CLI is unavailable.
 
-## Preconditions
+This skill is **read-only**. If `ot` is missing, say: "This workspace does not have the `ot` CLI installed, so I cannot use the Open Targets CLI skill here."
 
-- This skill is **read-only**.
-- If `ot` is not installed, say the workspace is not configured for this skill.
-
-## What this CLI is for
-
-This CLI is a shell-native primitive surface for strong models.
-
-Use it to:
-
-- diagnose local setup
-- install packaged agent skills when the user asks for chat-anywhere setup
-- discover the command surface
-- resolve names to IDs
-- inspect schema categories or one GraphQL type
-- write and execute GraphQL
-- capture release provenance
-
-Do not expect the CLI to contain a large library of high-level domain commands. The model is expected to do the planning.
+The CLI is a small primitive surface: setup diagnosis, command discovery, ID resolution, schema inspection, GraphQL execution, and release provenance. You do the planning; do not expect high-level domain commands.
 
 ## Workflow
 
-### 1. Discover the CLI surface once per session
+### 1. Discover only what you need
 
-If you have not already learned the CLI surface in this session, run:
+Use the commands in this skill directly. Run `ot describe <command>` only when you need a command contract you do not know, `ot tools` only when you need the command list, and `ot doctor` only when a command fails in a way that suggests setup problems. Reuse what you learn within the session.
 
-```bash
-ot doctor
-ot tools
-```
+### 2. Capture provenance when reporting data
 
-If you need the exact contract for one command, run:
-
-```bash
-ot describe resolve
-ot describe schema
-ot describe gql
-```
-
-Reuse that knowledge in later steps instead of repeatedly rediscovering the CLI.
-
-### 2. Get provenance once per session
-
-If you have not already captured the current Open Targets API and data release in this session, run:
-
-```bash
-ot meta
-```
-
-Reuse that metadata in later answers.
+Before the first answer that reports Open Targets data, run `ot meta` once per session for the data release and API version, and reuse it.
 
 ### 3. Resolve names to IDs before entity-specific queries
 
@@ -146,12 +108,6 @@ If `ot gql` returns `status=ok`, still inspect `graphql_data` for `null` fields.
 
 ## Preferred command patterns
 
-### “Find BRCA1”
-
-```bash
-ot resolve "BRCA1" --entity target --limit 5
-```
-
 ### Association questions
 
 Use this pattern for questions like:
@@ -196,27 +152,14 @@ These examples define the preferred workflow, not a complete query cookbook.
 
 ## Answering rules
 
-When answering the user, always include:
+Keep answers proportional to the question. Lead with the plain-English answer, then include only what applies:
 
-1. a plain-English answer first
-2. the exact resolved entity name and canonical ID when ID resolution was used
-3. any limit, sort, or filtering assumption you introduced in the query
-4. the Open Targets data release and API version
-5. any ambiguity or truncation note that affected the answer
+- the resolved entity name and canonical ID when resolution was used
+- the Open Targets data release when reporting data
+- any limit, sort, or filter you introduced
+- any ambiguity, partial result, or truncation that affected the answer
 
-### Query-shaping language
-
-- If you chose a limit, say so.
-- If you added a sort, say what you sorted by.
-- If you used API order, say that.
-- If you filtered to one datasource or one evidence type, say that.
-- If you used `orderByScore: "score"` on associations, say you sorted by association score.
-
-### Terminology rules
-
-- Distinguish **association scores** from **evidence items**.
-- Do not claim “top” or “best” unless you explicitly chose and stated a ranking criterion.
-- Do not hide canonical IDs when you used resolution.
+State each limit, sort (including API order or association score), and datasource or evidence-type filter you applied. Distinguish **association scores** from **evidence items**. Do not claim “top” or “best” without a stated ranking criterion, and do not claim completeness from a preview query.
 
 ## Limits and truncation
 
@@ -229,61 +172,3 @@ Recommended defaults:
 - evidence rows: 10
 
 If you truncate results, say so.
-
-## Out-of-scope behavior
-
-Do not use this skill for:
-
-- write operations
-- non-Open-Targets tasks
-
-## Failure handling
-
-### If `ot` is missing
-
-Say:
-
-> This workspace does not have the `ot` CLI installed, so I cannot use the Open Targets CLI skill here.
-
-### If the CLI returns `not_found`
-
-Say what term or ID you tried and suggest trying a more specific synonym.
-
-### If the CLI returns `ambiguous`
-
-Show the top candidates with IDs and ask the user to choose unless the CLI already returned a deterministic winner.
-
-### If `ot gql` returns an error
-
-Inspect a narrower schema slice or one type, fix the query, and retry once.
-
-## Minimal response template
-
-Use this shape unless the user asked for raw JSON:
-
-```text
-Summary: <plain-English answer>
-
-Resolved:
-- <entity name> (<canonical ID>) [only when resolution was used]
-
-Method:
-- CLI path: <tools/describe/meta/resolve/schema/type/gql sequence>
-- Query assumptions: <limit / sort / filter choices>
-
-Open Targets:
-- Data release: <release>
-- API version: <version>
-
-Notes:
-- <ambiguity / truncation / errors retried if any>
-```
-
-## Do not do these things
-
-- do not guess IDs silently
-- do not skip `resolve` when the user gave a name and ambiguity matters
-- do not call raw HTTP or `curl` first when `ot` is available
-- do not switch to a different data-access workflow automatically
-- do not dump the full schema when a category or one type is enough
-- do not claim completeness from a preview query

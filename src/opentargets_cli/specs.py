@@ -122,8 +122,8 @@ COMMAND_SPECS: dict[str, CommandSpec] = {
         examples=("ot install-skills", "ot install-skills --agent all"),
         notes=(
             "Uses the skill bundled with the installed package, falling back to the repo skill during editable development.",
-            "Existing skill directories are moved to timestamped backups before replacement.",
-            "This command only modifies Claude/Codex skill directories.",
+            "Existing skill directories are moved to timestamped backups in a sibling skill-backups directory before replacement.",
+            "This command only modifies Claude/Codex skill and skill-backups directories.",
         ),
     ),
     "describe": CommandSpec(
